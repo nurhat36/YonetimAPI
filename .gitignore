@@ -1,0 +1,42 @@
+# Build Results
+bin/
+obj/
+out/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Rider project files
+.idea/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Dotnet tools
+
+
+# Npm packages (if used)
+node_modules/
+
+# dotenv environment files
+.env
+
+# Publish output
+*.publish/
+
+# Paket yöneticileri
+packages/
+appsettings.json

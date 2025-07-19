@@ -1,0 +1,6 @@
+@YonetimAPI_HostAddress = http://localhost:5268
+
+GET {{YonetimAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
