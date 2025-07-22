@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Yonetim.Shared.Models;
 using YonetimAPI.ViewModels;
 using YonetimAPI.Helpers;
+using Microsoft.AspNetCore.Authorization;
 
 namespace YonetimAPI.Controllers
 {
@@ -22,13 +23,15 @@ namespace YonetimAPI.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, IConfiguration configuration, IWebHostEnvironment env)
+        public AuthController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, IConfiguration configuration, IWebHostEnvironment env, ILogger<AuthController> logger)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _configuration = configuration;
             _env = env;
+            _logger = logger;
         }
         [HttpPost("register")]
         [Consumes("multipart/form-data")]
@@ -85,6 +88,82 @@ namespace YonetimAPI.Controllers
             return BadRequest(result.Errors);
         }
 
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var allClaims = User?.Claims.ToList();
+                _logger.LogInformation("Token Claims:");
+                foreach (var c in allClaims)
+                {
+                    _logger.LogInformation($"Type: {c.Type} - Value: {c.Value}");
+                }
+
+                // Öncelikle en çok kullanılan claim türlerini sırayla dene
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                // Bu genelde GUID ID olur
+                if (string.IsNullOrEmpty(userId))
+                {
+                    userId = User.FindFirstValue("nameid"); // Alternatif olarak "nameid" claim'i
+                }
+                if (string.IsNullOrEmpty(userId))
+                {
+                    userId = User.FindFirstValue(JwtRegisteredClaimNames.NameId); // JWT standart claim'i
+                }
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("❗ UserId claim'i token içinde bulunamadı.");
+                    return Unauthorized(new
+                    {
+                        message = "Kimlik doğrulama başarısız.",
+                        detay = "UserId claim'i bulunamadı. Lütfen geçerli bir JWT token kullanın."
+                    });
+                }
+
+                _logger.LogInformation($"✅ Kullanıcı ID'si çözümlendi: {userId}");
+
+                // Kullanıcıyı veritabanından bul
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    _logger.LogWarning($"❗ Kullanıcı bulunamadı. ID: {userId}");
+                    return NotFound(new
+                    {
+                        message = "Kullanıcı bulunamadı.",
+                        detay = $"ID: {userId} olan kullanıcı sistemde kayıtlı değil."
+                    });
+                }
+
+                // Profil bilgileri response'a
+                var profile = new
+                {
+                    user.Id,
+                    user.UserName,
+                    user.Email,
+                    user.PhoneNumber,
+                    user.ProfileImageUrl
+                };
+
+                return Ok(profile);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "🚨 [GetProfile] sırasında beklenmeyen bir hata oluştu.");
+                return StatusCode(500, new
+                {
+                    message = "Sunucu hatası meydana geldi.",
+                    detay = ex.Message
+                });
+            }
+        }
+
+
+
+
+
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
@@ -108,14 +187,15 @@ namespace YonetimAPI.Controllers
         {
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id)
-            };
+        new Claim(JwtRegisteredClaimNames.Sub, user.Id),           // Kullanıcı adı
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim(ClaimTypes.NameIdentifier, user.Id),                   // Sadece kullanıcı ID'si burada
+        new Claim(ClaimTypes.Name, user.UserName),                       // Kullanıcı adı (farklı claim tipi)
+        new Claim(ClaimTypes.Email, user.Email)
+    };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
             var expires = DateTime.Now.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"]));
 
             var token = new JwtSecurityToken(
@@ -128,6 +208,10 @@ namespace YonetimAPI.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+
+
+
     }
 
     public class LoginRequest
