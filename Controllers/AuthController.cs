@@ -210,6 +210,25 @@ namespace YonetimAPI.Controllers
         }
 
 
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            try
+            {
+                await _signInManager.SignOutAsync(); // Identity çıkışı (Cookie tabanlı senaryolarda anlamlıdır)
+
+                // İstemci tarafı token'ı sileceği için ek olarak bir işlem yapmana gerek yok.
+                _logger.LogInformation($"🟢 Kullanıcı çıkış yaptı: {User.Identity?.Name}");
+
+                return Ok(new { message = "Çıkış başarılı. Lütfen token'ı istemciden silin." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "🚨 Logout sırasında bir hata oluştu.");
+                return StatusCode(500, new { message = "Çıkış işlemi sırasında bir hata oluştu.", detay = ex.Message });
+            }
+        }
 
 
     }
