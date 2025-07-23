@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
+using Yonetim.Shared.Services.Interfaces;
+using Yonetim.Shared.Services;
+using Yonetim.Shared.Services.Implementations;
+
+using Yonetim.Shared.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -127,7 +132,10 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
+builder.Services.AddScoped<IBuildingService, BuildingService>();
 
+// Authorization Handlers
+builder.Services.AddScoped<IAuthorizationHandler, BuildingAccessHandler>();
 // Authorization
 builder.Services.AddAuthorization(options =>
 {
