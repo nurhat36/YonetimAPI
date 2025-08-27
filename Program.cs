@@ -14,6 +14,7 @@ using Yonetim.Shared.Services;
 using Yonetim.Shared.Services.Implementations;
 
 using Yonetim.Shared.Security;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -146,6 +147,13 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+var wwwRootPath = builder.Configuration["WwwRootPath"];
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(wwwRootPath),
+    RequestPath = ""
+});
+
 
 // ----------------------------
 // Middleware Pipeline
