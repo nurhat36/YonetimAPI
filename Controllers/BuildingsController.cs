@@ -39,7 +39,7 @@ namespace YonetimAPI.Controllers
             _userManager = userManager;
             _hostingEnvironment = hostingEnvironment;
         }
-
+        [Authorize]
         [HttpGet("user-buildings")]
         public async Task<IActionResult> GetUserBuildings()
         {
@@ -81,7 +81,7 @@ namespace YonetimAPI.Controllers
         }
 
         [HttpGet("{buildingId}/dashboard")]
-        [Authorize(Policy = "BuildingAccess")]
+       
         public async Task<IActionResult> GetDashboard(int buildingId)
         {
             var building = await _context.Buildings
